@@ -29,3 +29,12 @@ cp "$IMAGE" "$output_path"
 echo "Image packaged: $output_path"
 echo "Image size:"
 ls -lh "$output_path"
+
+# Compress the image to reduce size (GitHub has 2GB limit for release assets)
+echo "Compressing image with xz (this may take several minutes)..."
+xz -9 -v "$output_path"
+
+compressed_path="$output_path.xz"
+echo "Compressed image: $compressed_path"
+echo "Compressed size:"
+ls -lh "$compressed_path"

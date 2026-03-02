@@ -17,7 +17,7 @@ help:
 	@echo "$(YELLOW)Raspberry Pi OS Image Builder$(NC)"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  make build           - Build the complete image (download, extract, modify, package)"
+	@echo "  make build           - Build the complete image (download, extract, modify, compress)"
 	@echo "  make download        - Download latest Raspberry Pi OS"
 	@echo "  make extract         - Extract the downloaded image"
 	@echo "  make modify-image    - Mount and modify the image (add user, etc.)"
@@ -50,7 +50,7 @@ build: | $(OUTPUT_DIR)
 	@$(MAKE) modify-image
 	@echo "$(YELLOW)Packaging final image...$(NC)"
 	@bash scripts/package_image.sh $(TEMP_DIR) $(OUTPUT_DIR) $(IMAGE_NAME)
-	@echo "$(GREEN)Build complete! Image saved to $(OUTPUT_DIR)/$(IMAGE_NAME).img$(NC)"
+	@echo "$(GREEN)Build complete! Compressed image saved to $(OUTPUT_DIR)/$(IMAGE_NAME).img.xz$(NC)"
 
 # Clean up all build artifacts
 clean:

@@ -45,14 +45,14 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: ecen225-rpi-os-image
-                  path: dist/ecen225-rpi-os.img
+                  path: dist/ecen225-rpi-os.img.xz
                   retention-days: 30
 
             - name: Create release (on main branch only)
               if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
               uses: ncipollo/release-action@v1
               with:
-                  artifacts: "dist/ecen225-rpi-os.img"
+                  artifacts: "dist/ecen225-rpi-os.img.xz"
                   tag: "v${{ github.run_number }}"
                   name: "Raspberry Pi OS Image Build ${{ github.run_number }}"
                   bodyFile: ".github/release-notes.md"

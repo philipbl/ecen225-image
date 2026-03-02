@@ -95,6 +95,9 @@ The project includes a GitHub Actions workflow (`.github/workflows/build-image.y
 
 ### macOS
 ```bash
+# Extract the compressed image
+xz -d ecen225-rpi-os.img.xz
+
 # Find your SD card
 diskutil list
 
@@ -108,6 +111,9 @@ sudo diskutil eject /dev/diskX
 
 ### Linux
 ```bash
+# Extract the compressed image
+xz -d ecen225-rpi-os.img.xz
+
 # Find your SD card
 lsblk
 
@@ -142,9 +148,9 @@ sudo sync
 After building, the following directories are created:
 
 ```
-downloads/                         # Downloaded image
-build/image_work/                  # Extracted and modified image
-dist/                              # Final output image
+downloads/                         # Downloaded image (.img.xz)
+temp/image_work/                   # Extracted and modified image
+dist/                              # Final output (compressed .img.xz)
 ```
 
 ## Default User Credentials
@@ -202,10 +208,8 @@ This usually means:
 - Run with `sudo`
 - Check that `/dev/loop*` devices exist
 
-### Image is too large
-The image size matches the original Raspberry Pi OS size. To reduce it:
-- Use `zerofill` on empty space before packaging
-- Compress the output image with `xz`
+### Image Compression
+The final image is automatically compressed with xz to reduce size (typically 70-80% reduction). This is required to stay under GitHub's 2GB release asset limit. Users must decompress with `xz -d` before writing to SD card.
 
 ## Contributing
 
