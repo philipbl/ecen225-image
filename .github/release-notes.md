@@ -3,8 +3,17 @@
 This is an automatically generated Raspberry Pi OS image with the following modifications:
 
 ## Modifications Applied
-- Added system user `ta` with a secure password
-- User has sudo access
+- System upgrade (apt upgrade)
+- Development tools and libraries installed:
+  - Git, Zsh, GDB, CMake
+  - Camera and image processing libraries (libcamera-dev, libjpeg-dev, libtiff5-dev)
+  - Boost libraries (libboost-program-options-dev)
+  - DRM and media libraries (libdrm-dev, libexif-dev)
+  - Utilities: tmux, vim, curl
+- Swapfile configured to 1024MB
+- Oh My Zsh installed for both root and ta user
+- Default shell changed to Zsh
+- Added system user `ta`
 
 ## How to Use
 1. Download the `ecen225-rpi-os.img.xz` file
@@ -19,8 +28,3 @@ This is an automatically generated Raspberry Pi OS image with the following modi
    ```
    Replace `X` with your SD card's disk number (use `diskutil list` to find it)
 4. Insert the SD card into your Raspberry Pi and boot
-
-## Default Credentials
-- **User**: ta
-- **Password**: Set via GitHub secret (contact repository administrator)
-- **Sudo**: Enabled

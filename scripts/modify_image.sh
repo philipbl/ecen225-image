@@ -124,6 +124,47 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
     echo "User $USERNAME created successfully"
 '
 
+# System upgrades and package installation
+echo "Upgrading system packages..."
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    apt-get update
+    apt-get upgrade -y
+    apt-get clean
+    apt-get autoclean
+'
+
+echo "Installing development dependencies..."
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    apt-get install -y \
+        git \
+        zsh \
+        gdb \
+        libcamera-dev \
+        libjpeg-dev \
+        libtiff5-dev \
+        cmake \
+        libboost-program-options-dev \
+        libdrm-dev \
+        libexif-dev \
+        tmux \
+        vim \
+        curl
+    apt-get clean
+    apt-get autoclean
+'
+
+# Configure swapfile
+echo "Configuring swapfile..."
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    if command -v dphys-swapfile &> /dev/null; then
+        dphys-swapfile swapoff || true
+        sed -i "s/CONF_SWAPSIZE=.*/CONF_SWAPSIZE=1024/g" /etc/dphys-swapfile
+        dphys-swapfile setup
+        dphys-swapfile swapon
+        echo "Swapfile configured to 1024MB"
+    fi
+'
+
 echo "Image modification complete"
 
 # Cleanup bind mounts

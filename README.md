@@ -12,20 +12,37 @@ Automated tooling to build and customize Raspberry Pi OS images with Continuous 
 ## Current Modifications
 
 This build applies the following modifications to Raspberry Pi OS:
-- Adds system user `ta` with a secure password (set via environment variable)
+
+### System Updates
+- Full system upgrade (apt upgrade)
+- Swapfile configured to 1024MB
+
+### Development Tools & Libraries
+Installs essential tools for embedded systems and image processing:
+- **Version Control**: Git
+- **Shell**: Zsh with Oh My Zsh (set as default shell)
+- **Debugging**: GDB
+- **Build Tools**: CMake
+- **Camera/Image Processing**: libcamera-dev, libjpeg-dev, libtiff5-dev, libexif-dev
+- **Libraries**: libboost-program-options-dev, libdrm-dev
+- **Utilities**: tmux, vim, curl
+
+### User Configuration
+- Added system user `ta` with a secure password (set via environment variable)
 - Grants sudo access to the `ta` user
+- Oh My Zsh installed for both root and ta user
 
 ## Prerequisites
 
 ### Local Building
 - Linux system with `sudo` access
-- Tools: `curl`, `xz-utils`, `fdisk`, `losetup`, `mount`
-- At least 4GB free disk space for downloading and building
+- Tools: `curl`, `xz-utils`, `fdisk`, `losetup`, `mount`, `parted`, `resize2fs`
+- At least 5GB free disk space for downloading and building
 
 **Installation on Ubuntu/Debian:**
 ```bash
 sudo apt-get update
-sudo apt-get install -y curl xz-utils fdisk
+sudo apt-get install -y curl xz-utils fdisk parted e2fsprogs
 ```
 
 ### GitHub Actions
@@ -60,11 +77,24 @@ sudo -E make build
 # Or step by step:
 sudo -E make download      # Download latest Raspberry Pi OS
 sudo -E make extract       # Extract the compressed image
+sudo -E make grow-image    # Grow image size by 1GB (optional, recommended)
 sudo -E make modify-image  # Mount and modify the image
 sudo make clean            # Clean up all artifacts
 ```
 
 **Note:** The `-E` flag preserves environment variables when using `sudo`.
+
+### Image Size Growth
+
+The `grow-image` target automatically adds 1GB of space to the image to ensure there's enough room for all packages and dependencies. This is especially important because:
+- Package downloads require temporary storage in `/var/cache/apt/`
+- The build includes many development libraries and tools
+- Having extra space prevents "out of disk" errors during build
+
+If you need more space, you can manually specify the size (in MB):
+```bash
+sudo bash scripts/grow_image.sh temp/ 2048  # Add 2GB instead of 1GB
+```
 
 ### Automated Builds via GitHub Actions
 
