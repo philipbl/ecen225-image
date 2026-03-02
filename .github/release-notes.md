@@ -3,7 +3,7 @@
 This is an automatically generated Raspberry Pi OS image with the following modifications:
 
 ## Modifications Applied
-- Added system user `ta` with password `ecen225`
+- Added system user `ta` with a secure password
 - User has sudo access
 
 ## How to Use
@@ -18,7 +18,7 @@ This is an automatically generated Raspberry Pi OS image with the following modi
 
 ## Default Credentials
 - **User**: ta
-- **Password**: ecen225
+- **Password**: Set via GitHub secret (contact repository administrator)
 - **Sudo**: Enabled
 
 ## Image Build Date

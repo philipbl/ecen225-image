@@ -3,8 +3,15 @@
 *.img.xz
 *.zip
 build/
+temp/
 dist/
 downloads/
+
+# Environment and secrets
+.env
+.env.local
+*.key
+*.pem
 
 # OS files
 .DS_Store

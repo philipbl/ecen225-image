@@ -12,7 +12,7 @@ Automated tooling to build and customize Raspberry Pi OS images with Continuous 
 ## Current Modifications
 
 This build applies the following modifications to Raspberry Pi OS:
-- Adds system user `ta` with password `ecen225`
+- Adds system user `ta` with a secure password (set via environment variable)
 - Grants sudo access to the `ta` user
 
 ## Prerequisites
@@ -31,23 +31,40 @@ sudo apt-get install -y curl xz-utils fdisk
 ### GitHub Actions
 The workflow runs automatically on Ubuntu runners with all dependencies pre-installed.
 
+**Required GitHub Secret:**
+Before running the workflow, you must configure the `TA_PASSWORD` secret in your repository:
+
+1. Go to your repository on GitHub
+2. Navigate to Settings → Secrets and variables → Actions
+3. Click "New repository secret"
+4. Name: `TA_PASSWORD`
+5. Value: Your desired password for the `ta` user
+6. Click "Add secret"
+
 ## Usage
 
 ### Building Locally
 
+**Important:** You must set the `TA_PASSWORD` environment variable before building:
+
 ```bash
+# Set the password for the ta user
+export TA_PASSWORD='your_secure_password'
+
 # Display available commands
 make help
 
 # Build the complete image (download, extract, modify, package)
-sudo make build
+sudo -E make build
 
 # Or step by step:
-sudo make download      # Download latest Raspberry Pi OS
-sudo make extract       # Extract the compressed image
-sudo make modify-image  # Mount and modify the image
-sudo make clean         # Clean up all artifacts
+sudo -E make download      # Download latest Raspberry Pi OS
+sudo -E make extract       # Extract the compressed image
+sudo -E make modify-image  # Mount and modify the image
+sudo make clean            # Clean up all artifacts
 ```
+
+**Note:** The `-E` flag preserves environment variables when using `sudo`.
 
 ### Automated Builds via GitHub Actions
 
@@ -135,8 +152,14 @@ dist/                              # Final output image
 When you boot the image for the first time:
 
 - **Username**: `ta`
-- **Password**: `ecen225`
+- **Password**: Set via `TA_PASSWORD` environment variable during build
 - **Sudo Access**: Yes
+
+**Security Note:** 
+- Never commit passwords to your repository
+- Always use GitHub Secrets for automated builds
+- Change the default password after first login for production use
+- Use strong, unique passwords (minimum 12 characters recommended)
 
 ## Customizing the Build
 
@@ -159,8 +182,16 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
 
 ## Troubleshooting
 
+### "Error: TA_PASSWORD environment variable is not set"
+You must set the password before building:
+```bash
+export TA_PASSWORD='your_secure_password'
+sudo -E make build
+```
+For GitHub Actions, ensure the `TA_PASSWORD` secret is configured in repository settings.
+
 ### "This script must be run as root"
-Use `sudo make build` instead of just `make build`
+Use `sudo -E make build` instead of just `make build` (the `-E` flag preserves environment variables)
 
 ### "No extracted image found"
 Make sure you run `make download` before other targets, or use `make build`

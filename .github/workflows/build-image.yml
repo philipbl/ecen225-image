@@ -32,8 +32,10 @@ jobs:
                     binfmt-support
 
             - name: Build image
+              env:
+                  TA_PASSWORD: ${{ secrets.TA_PASSWORD }}
               run: |
-                  sudo make build
+                  sudo -E make build
 
             - name: List output artifacts
               run: |

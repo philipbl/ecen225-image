@@ -95,11 +95,20 @@ fi
 # Copy resolv.conf for DNS
 cp /etc/resolv.conf "$MOUNT_ROOT/etc/resolv.conf" || true
 
+# Get password from environment variable
+TA_PASSWORD="${TA_PASSWORD:-}"
+
+if [ -z "$TA_PASSWORD" ]; then
+    echo "Error: TA_PASSWORD environment variable is not set"
+    echo "Please set it before running: export TA_PASSWORD='your_password'"
+    exit 1
+fi
+
 # Add the ta user
-echo "Adding user 'ta' with password 'ecen225'..."
+echo "Adding user 'ta' with password from environment variable..."
 chroot "$MOUNT_ROOT" /bin/bash -c '
     USERNAME="ta"
-    PASSWORD="ecen225"
+    PASSWORD="'"$TA_PASSWORD"'"
     
     # Create user with home directory
     if ! id -u "$USERNAME" > /dev/null 2>&1; then
