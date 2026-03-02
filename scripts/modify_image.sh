@@ -129,6 +129,8 @@ echo "Upgrading system packages..."
 chroot "$MOUNT_ROOT" /bin/bash -c '
     apt-get update
     apt-get upgrade -y
+    apt-get clean
+    apt-get autoclean
 '
 
 echo "Installing development dependencies..."
@@ -147,6 +149,8 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
         tmux \
         vim \
         curl
+    apt-get clean
+    apt-get autoclean
 '
 
 # Configure swapfile
