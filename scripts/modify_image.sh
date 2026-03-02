@@ -165,21 +165,6 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
     fi
 '
 
-# Install and configure Oh My Zsh for root
-echo "Installing Oh My Zsh for root..."
-chroot "$MOUNT_ROOT" /bin/bash -c '
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended 2>/dev/null || true
-    chsh -s /usr/bin/zsh root || true
-'
-
-# Install and configure Oh My Zsh for ta user
-echo "Installing Oh My Zsh for ta user..."
-chroot "$MOUNT_ROOT" /bin/bash -c '
-    export RUNZSH=no
-    su - ta -c "sh -c \"\\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended 2>/dev/null || true"
-    chsh -s /usr/bin/zsh ta || true
-'
-
 echo "Image modification complete"
 
 # Cleanup bind mounts
