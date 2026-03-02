@@ -24,6 +24,3 @@ This is an automatically generated Raspberry Pi OS image with the following modi
 - **User**: ta
 - **Password**: Set via GitHub secret (contact repository administrator)
 - **Sudo**: Enabled
-
-## Image Build Date
-Generated on: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
