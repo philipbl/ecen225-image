@@ -27,6 +27,8 @@ jobs:
                     curl \
                     xz-utils \
                     fdisk \
+                    parted \
+                    e2fsprogs \
                     qemu-user-static \
                     binfmt-support
 

@@ -17,9 +17,10 @@ help:
 	@echo "$(YELLOW)Raspberry Pi OS Image Builder$(NC)"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  make build           - Build the complete image (download, extract, modify, compress)"
+	@echo "  make build           - Build the complete image (download, extract, grow, modify, compress)"
 	@echo "  make download        - Download latest Raspberry Pi OS"
 	@echo "  make extract         - Extract the downloaded image"
+	@echo "  make grow-image      - Grow image size (adds 1GB by default)"
 	@echo "  make modify-image    - Mount and modify the image (add user, etc.)"
 	@echo "  make clean           - Clean all build artifacts"
 	@echo "  make help            - Show this help message"
@@ -38,8 +39,13 @@ extract: | $(TEMP_DIR)
 	@echo "$(YELLOW)Extracting image...$(NC)"
 	@bash scripts/extract_image.sh $(DOWNLOAD_DIR) $(TEMP_DIR)
 
+# Grow the image size to provide more space for packages
+grow-image: extract
+	@echo "$(YELLOW)Growing image size...$(NC)"
+	@sudo bash scripts/grow_image.sh $(TEMP_DIR) 1024
+
 # Mount and modify the image
-modify-image: extract
+modify-image: grow-image
 	@echo "$(YELLOW)Modifying image...$(NC)"
 	@bash scripts/modify_image.sh $(TEMP_DIR)
 
