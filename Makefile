@@ -7,11 +7,11 @@ NC := \033[0m # No Color
 
 # Image settings
 DOWNLOAD_DIR := downloads
-BUILD_DIR := build
+TEMP_DIR := temp
 OUTPUT_DIR := dist
 IMAGE_NAME := ecen225-rpi-os
 DOWNLOAD_URL := https://downloads.raspberrypi.org/raspios_lite_arm64/images
-WORK_DIR := $(BUILD_DIR)/image_work
+WORK_DIR := $(TEMP_DIR)/image_work
 
 help:
 	@echo "$(YELLOW)Raspberry Pi OS Image Builder$(NC)"
@@ -25,7 +25,7 @@ help:
 	@echo "  make help            - Show this help message"
 
 # Create necessary directories
-$(DOWNLOAD_DIR) $(BUILD_DIR) $(OUTPUT_DIR):
+$(DOWNLOAD_DIR) $(TEMP_DIR) $(OUTPUT_DIR):
 	mkdir -p $@
 
 # Download the latest Raspberry Pi OS Lite (ARM64)
@@ -34,14 +34,14 @@ download: | $(DOWNLOAD_DIR)
 	@bash scripts/download_rpi_os.sh $(DOWNLOAD_DIR)
 
 # Extract the downloaded image
-extract: | $(BUILD_DIR)
+extract: | $(TEMP_DIR)
 	@echo "$(YELLOW)Extracting image...$(NC)"
-	@bash scripts/extract_image.sh $(DOWNLOAD_DIR) $(BUILD_DIR)
+	@bash scripts/extract_image.sh $(DOWNLOAD_DIR) $(TEMP_DIR)
 
 # Mount and modify the image
 modify-image: extract
 	@echo "$(YELLOW)Modifying image...$(NC)"
-	@bash scripts/modify_image.sh $(BUILD_DIR)
+	@bash scripts/modify_image.sh $(TEMP_DIR)
 
 # Build the complete modified image
 build: | $(OUTPUT_DIR)
@@ -49,13 +49,13 @@ build: | $(OUTPUT_DIR)
 	@$(MAKE) download
 	@$(MAKE) modify-image
 	@echo "$(YELLOW)Packaging final image...$(NC)"
-	@bash scripts/package_image.sh $(BUILD_DIR) $(OUTPUT_DIR) $(IMAGE_NAME)
+	@bash scripts/package_image.sh $(TEMP_DIR) $(OUTPUT_DIR) $(IMAGE_NAME)
 	@echo "$(GREEN)Build complete! Image saved to $(OUTPUT_DIR)/$(IMAGE_NAME).img$(NC)"
 
 # Clean up all build artifacts
 clean:
 	@echo "$(YELLOW)Cleaning build artifacts...$(NC)"
-	rm -rf $(BUILD_DIR) $(DOWNLOAD_DIR) $(OUTPUT_DIR)
+	rm -rf $(TEMP_DIR) $(DOWNLOAD_DIR) $(OUTPUT_DIR)
 	@echo "$(GREEN)Clean complete!$(NC)"
 
 .DEFAULT_GOAL := help
