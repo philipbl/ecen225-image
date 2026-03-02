@@ -1,0 +1,56 @@
+name: Build Raspberry Pi OS Image
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    workflow_dispatch:
+    schedule:
+        # Run weekly on Monday at 00:00 UTC
+        - cron: "0 0 * * 1"
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Set up dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y \
+                    curl \
+                    xz-utils \
+                    fdisk
+
+            - name: Build image
+              run: |
+                  sudo make build
+
+            - name: List output artifacts
+              run: |
+                  ls -lh dist/
+
+            - name: Upload image artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ecen225-rpi-os-image
+                  path: dist/ecen225-rpi-os.img
+                  retention-days: 30
+
+            - name: Create release (on main branch only)
+              if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+              uses: ncipollo/release-action@v1
+              with:
+                  artifacts: "dist/ecen225-rpi-os.img"
+                  tag: "v${{ github.run_number }}"
+                  name: "Raspberry Pi OS Image Build ${{ github.run_number }}"
+                  bodyFile: ".github/release-notes.md"
+                  draft: false
+                  prerelease: false

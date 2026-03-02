@@ -1,0 +1,25 @@
+# Build artifacts
+*.img
+*.img.xz
+*.zip
+build/
+dist/
+downloads/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+/tmp/
