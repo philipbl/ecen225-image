@@ -26,16 +26,27 @@ RELEASE_PAGE="https://www.raspberrypi.com/software/operating-systems/"
 # Get the latest release information from the Raspberry Pi download server
 DOWNLOAD_URL="https://downloads.raspberrypi.org/raspios_lite_arm64/images"
 
-# Fetch the HTML page and extract the latest download link
-LATEST_IMAGE=$(curl -s "$DOWNLOAD_URL/" | grep -o 'href="[^"]*-raspios-[^"]*\.img\.xz"' | head -1 | cut -d'"' -f2)
+# Fetch the HTML page and extract the latest folder
+# The downloads are organized in folders by release date
+LATEST_FOLDER=$(curl -s "$DOWNLOAD_URL/" | grep -o 'href="raspios_lite_arm64-[0-9]*-[0-9]*-[0-9]*/"' | tail -1 | cut -d'"' -f2 | sed 's|/$||')
 
-if [ -z "$LATEST_IMAGE" ]; then
-    echo "Failed to find latest Raspberry Pi OS image"
+if [ -z "$LATEST_FOLDER" ]; then
+    echo "Failed to find latest Raspberry Pi OS release folder"
     echo "You may need to manually download from: $RELEASE_PAGE"
     exit 1
 fi
 
-DOWNLOAD_LINK="$DOWNLOAD_URL/$LATEST_IMAGE"
+echo "Latest release folder: $LATEST_FOLDER"
+
+# Now get the image file from within that folder
+LATEST_IMAGE=$(curl -s "$DOWNLOAD_URL/$LATEST_FOLDER/" | grep -o 'href="[^"]*\.img\.xz"' | head -1 | cut -d'"' -f2)
+
+if [ -z "$LATEST_IMAGE" ]; then
+    echo "Failed to find image file in $LATEST_FOLDER"
+    exit 1
+fi
+
+DOWNLOAD_LINK="$DOWNLOAD_URL/$LATEST_FOLDER/$LATEST_IMAGE"
 
 echo "Downloading from: $DOWNLOAD_LINK"
 cd "$DOWNLOAD_DIR"
