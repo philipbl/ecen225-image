@@ -27,7 +27,9 @@ jobs:
                   sudo apt-get install -y \
                     curl \
                     xz-utils \
-                    fdisk
+                    fdisk \
+                    qemu-user-static \
+                    binfmt-support
 
             - name: Build image
               run: |

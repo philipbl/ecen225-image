@@ -24,6 +24,18 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Set up QEMU user emulation for ARM64 (needed when building on x86_64)
+echo "Setting up QEMU emulation for ARM64..."
+if command -v update-binfmts &> /dev/null; then
+    update-binfmts --enable qemu-aarch64 2>/dev/null || true
+fi
+
+# Copy QEMU binary to image if it exists
+if [ -f /usr/bin/qemu-aarch64-static ]; then
+    mkdir -p "$WORK_DIR"/qemu_setup
+    # We'll copy it to the mount later  
+fi
+
 MOUNT_DIR="$WORK_DIR/mnt"
 MOUNT_BOOT="$MOUNT_DIR/boot"
 MOUNT_ROOT="$MOUNT_DIR/root"
@@ -72,6 +84,13 @@ mount --bind /dev "$MOUNT_ROOT/dev"
 mount --bind /sys "$MOUNT_ROOT/sys"
 mount --bind /proc "$MOUNT_ROOT/proc"
 mount -t devpts /dev/pts "$MOUNT_ROOT/dev/pts"
+
+# Copy QEMU static binary for ARM64 emulation (if available)
+if [ -f /usr/bin/qemu-aarch64-static ]; then
+    echo "Setting up QEMU static binary for ARM64 emulation..."
+    mkdir -p "$MOUNT_ROOT/usr/bin"
+    cp /usr/bin/qemu-aarch64-static "$MOUNT_ROOT/usr/bin/"
+fi
 
 # Copy resolv.conf for DNS
 cp /etc/resolv.conf "$MOUNT_ROOT/etc/resolv.conf" || true
