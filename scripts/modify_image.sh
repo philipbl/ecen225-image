@@ -124,6 +124,58 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
     echo "User $USERNAME created successfully"
 '
 
+# System upgrades and package installation
+echo "Upgrading system packages..."
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    apt-get update
+    apt-get upgrade -y
+'
+
+echo "Installing development dependencies..."
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    apt-get install -y \
+        git \
+        zsh \
+        gdb \
+        libcamera-dev \
+        libjpeg-dev \
+        libtiff5-dev \
+        cmake \
+        libboost-program-options-dev \
+        libdrm-dev \
+        libexif-dev \
+        tmux \
+        vim \
+        curl
+'
+
+# Configure swapfile
+echo "Configuring swapfile..."
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    if command -v dphys-swapfile &> /dev/null; then
+        dphys-swapfile swapoff || true
+        sed -i "s/CONF_SWAPSIZE=.*/CONF_SWAPSIZE=1024/g" /etc/dphys-swapfile
+        dphys-swapfile setup
+        dphys-swapfile swapon
+        echo "Swapfile configured to 1024MB"
+    fi
+'
+
+# Install and configure Oh My Zsh for root
+echo "Installing Oh My Zsh for root..."
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended 2>/dev/null || true
+    chsh -s /usr/bin/zsh root || true
+'
+
+# Install and configure Oh My Zsh for ta user
+echo "Installing Oh My Zsh for ta user..."
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    export RUNZSH=no
+    su - ta -c "sh -c \"\\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended 2>/dev/null || true"
+    chsh -s /usr/bin/zsh ta || true
+'
+
 echo "Image modification complete"
 
 # Cleanup bind mounts

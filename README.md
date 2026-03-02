@@ -12,8 +12,25 @@ Automated tooling to build and customize Raspberry Pi OS images with Continuous 
 ## Current Modifications
 
 This build applies the following modifications to Raspberry Pi OS:
-- Adds system user `ta` with a secure password (set via environment variable)
+
+### System Updates
+- Full system upgrade (apt upgrade)
+- Swapfile configured to 1024MB
+
+### Development Tools & Libraries
+Installs essential tools for embedded systems and image processing:
+- **Version Control**: Git
+- **Shell**: Zsh with Oh My Zsh (set as default shell)
+- **Debugging**: GDB
+- **Build Tools**: CMake
+- **Camera/Image Processing**: libcamera-dev, libjpeg-dev, libtiff5-dev, libexif-dev
+- **Libraries**: libboost-program-options-dev, libdrm-dev
+- **Utilities**: tmux, vim, curl
+
+### User Configuration
+- Added system user `ta` with a secure password (set via environment variable)
 - Grants sudo access to the `ta` user
+- Oh My Zsh installed for both root and ta user
 
 ## Prerequisites
 
