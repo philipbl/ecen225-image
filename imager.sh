@@ -1,227 +1,302 @@
 #!/bin/bash
+#
+# ECEn 225 Raspberry Pi Imager
+# Downloads the pre-built course image, writes it to an SD card,
+# and configures a student user account.
+#
 
-# Enable error tracing
-set -e
+set -euo pipefail
 
-# Variables
-RPI_OS_URL="https://github.com/philipbl/ecen225-image/releases/download/v10/ecen225-rpi-os.img.xz"
+# ── Variables ────────────────────────────────────────────────────────────────
+IMAGE_VERSION="v10"
+RPI_OS_URL="https://github.com/philipbl/ecen225-image/releases/download/${IMAGE_VERSION}/ecen225-rpi-os.img.xz"
 IMG_FILE="ecen225-rpi-os.img"
-IMG_FILE_XZ="$IMG_FILE.xz"
+IMG_FILE_XZ="${IMG_FILE}.xz"
 BOOT_PARTITION="/media/$(whoami)/bootfs"
 ROOT_PARTITION="/media/$(whoami)/rootfs"
 
-# Function to print in color
-function echo_red {
-    echo -e "\033[31m$1\033[0m"
-}
-function echo_green {
-    echo -e "\033[32m$1\033[0m"
+# ── Colors & formatting ─────────────────────────────────────────────────────
+BOLD='\033[1m'
+DIM='\033[2m'
+RED='\033[31m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+CYAN='\033[36m'
+NC='\033[0m'
+
+print_header()  { echo -e "\n${BOLD}${CYAN}▶ $1${NC}"; }
+print_success() { echo -e "  ${GREEN}✔${NC} $1"; }
+print_error()   { echo -e "  ${RED}✖${NC} $1" >&2; }
+print_warn()    { echo -e "  ${YELLOW}!${NC} $1"; }
+print_info()    { echo -e "  ${DIM}$1${NC}"; }
+
+# ── Spinner for long-running commands ────────────────────────────────────────
+spinner() {
+    local pid=$1
+    local msg="${2:-Working...}"
+    local chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r  ${CYAN}%s${NC} %s" "${chars:i%${#chars}:1}" "$msg"
+        i=$((i + 1))
+        sleep 0.1
+    done
+    printf "\r\033[K"  # clear spinner line
+    wait "$pid"
+    return $?
 }
 
-echo_green "Welcome to the ECEn 225 Raspberry Pi Imager! This script will image your SD card and create a new user on your Raspberry Pi. You will be asked for a username and password for the user."
-echo_red "Use a DIFFERENT password than you did for your BYU or CAEDM account."
-echo_green ""
+# ── Cleanup on exit ─────────────────────────────────────────────────────────
+cleanup() {
+    rm -f "$IMG_FILE" "$IMG_FILE_XZ" 2>/dev/null || true
+}
+trap cleanup EXIT
 
-# Prompt the user if they want to proceed
-read -p "Would you like to proceed? (y/n): " proceed
-if [[ "$proceed" != "y" ]]; then
+# ── Banner ───────────────────────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════╗${NC}"
+echo -e "${BOLD}${CYAN}║         ECEn 225 — Raspberry Pi SD Card Imager      ║${NC}"
+echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "  This script will:"
+echo -e "    1. Download the ECEn 225 course image"
+echo -e "    2. Write it to your SD card"
+echo -e "    3. Configure your student user account"
+echo ""
+echo -e "  ${RED}${BOLD}⚠  Use a DIFFERENT password than your BYU/CAEDM account.${NC}"
+echo ""
+
+# ── Confirm ──────────────────────────────────────────────────────────────────
+read -rp "  Would you like to proceed? (y/n): " proceed
+if [[ "${proceed,,}" != "y" ]]; then
+    echo ""
+    print_info "Cancelled."
     exit 0
 fi
 
-echo ""
-echo_green "Start by plugging in the SD card and adapter into the USB slot."
-read -p "Press enter once you have plugged in the SD card..." proceed
-echo ""
+# ── Plug in SD card ─────────────────────────────────────────────────────────
+print_header "SD Card Setup"
+echo -e "  Plug the SD card and USB adapter into your computer."
+read -rp "  Press Enter once the SD card is plugged in..." _
 
-# Prompt for username
-echo_green "We will now set up the credentials for the new account we will create on the Raspberry Pi."
-echo ""
-read -p "Enter NetID: " username
+# ── Credentials ──────────────────────────────────────────────────────────────
+print_header "User Account Setup"
 
-# Validate username for special characters
-if [[ "$username" =~ [^a-zA-Z0-9] ]]; then
-    echo_red "Error: Username contains special characters. Please use only letters and numbers."
-    exit 1
-fi
-
-# Prompt for password and confirm it
+# Username (NetID)
 while true; do
-    read -sp "Enter password: " password
-    echo ""
-    read -sp "Confirm password: " password_confirm
-    echo ""
-
-    if [ "$password" == "$password_confirm" ]; then
-        break
+    read -rp "  Enter your NetID: " username
+    if [[ -z "$username" ]]; then
+        print_error "NetID cannot be empty."
+    elif [[ ! "$username" =~ ^[a-zA-Z][a-zA-Z0-9]*$ ]]; then
+        print_error "NetID must start with a letter and contain only letters and numbers."
     else
-        echo_red "Passwords do not match. Please try again."
+        break
     fi
 done
 
-# Hash the password using openssl (sha-256)
-hashed_password=$(echo "$password" | openssl passwd -5 -stdin)
+# Password
+while true; do
+    read -rsp "  Enter password: " password
+    echo ""
+    if [[ ${#password} -lt 4 ]]; then
+        print_error "Password must be at least 4 characters."
+        continue
+    fi
+    read -rsp "  Confirm password: " password_confirm
+    echo ""
+    if [[ "$password" == "$password_confirm" ]]; then
+        print_success "Credentials accepted."
+        break
+    else
+        print_error "Passwords do not match. Please try again."
+    fi
+done
 
-# Check and clean up leftover files from a previous run
-if [ -f "$IMG_FILE" ] || [ -f "$IMG_FILE_XZ" ]; then
-    echo_green "Cleaning up leftover files from a previous run..."
+# Hash password (SHA-512)
+hashed_password=$(echo "$password" | openssl passwd -6 -stdin)
+
+# ── Clean up previous run ───────────────────────────────────────────────────
+if [[ -f "$IMG_FILE" ]] || [[ -f "$IMG_FILE_XZ" ]]; then
+    print_warn "Removing leftover files from a previous run..."
     rm -f "$IMG_FILE" "$IMG_FILE_XZ"
 fi
 
-# List available drives using lsblk, filtering for sdX drives only
-echo ""
-echo_green "Checking for available drives..."
-available_drives=$(lsblk -d -o NAME,SIZE,MODEL | grep -E '^sd' || true)
+# ── Detect SD card ──────────────────────────────────────────────────────────
+print_header "Drive Selection"
 
-# Check if any sdX drives are found
+available_drives=$(lsblk -d -n -o NAME,SIZE,MODEL,TRAN 2>/dev/null \
+    | grep -E '(usb|sd)' \
+    | grep -vE '^(nvme|loop)' || true)
+
+# Fallback: just list sdX drives
 if [[ -z "$available_drives" ]]; then
-    echo_red "Error: No SD card detected. Please plug in your SD card and try again."
+    available_drives=$(lsblk -d -n -o NAME,SIZE,MODEL | grep -E '^sd' || true)
+fi
+
+if [[ -z "$available_drives" ]]; then
+    print_error "No removable drives detected."
+    print_info "Make sure your SD card is properly connected and try again."
     exit 1
 fi
 
-# Display the list of available drives
 echo ""
-echo "Available drives:"
-echo "$available_drives"
+echo -e "  ${BOLD}Available drives:${NC}"
+echo -e "  ${DIM}─────────────────────────────────────────────────${NC}"
+echo "$available_drives" | while IFS= read -r line; do
+    echo -e "    $line"
+done
+echo -e "  ${DIM}─────────────────────────────────────────────────${NC}"
 echo ""
 
-# Prompt user for the target drive (must match sdX pattern)
-read -p "Enter the target drive (e.g., sda): " drive
+read -rp "  Enter the target drive (e.g., sda): " drive
 
-# Validate if the drive exists and matches the pattern sdX
-if [[ ! $drive =~ ^sd[a-z]$ ]]; then
-    echo_red "Error: /dev/$drive is not a valid sdX block device."
+# Validate drive
+if [[ ! "$drive" =~ ^sd[a-z]$ ]]; then
+    print_error "/dev/$drive is not a valid sdX device name."
     exit 1
 fi
 
-# Check if the device exists as a block device
-if [ ! -b "/dev/$drive" ]; then
-    echo_red "Error: /dev/$drive is not a valid block device."
+if [[ ! -b "/dev/$drive" ]]; then
+    print_error "/dev/$drive does not exist as a block device."
     exit 1
 fi
 
-# Download the Raspberry Pi OS Lite (64-bit) image
+# Confirm destructive write
+drive_info=$(lsblk -d -n -o NAME,SIZE,MODEL "/dev/$drive" 2>/dev/null || echo "$drive")
 echo ""
-echo_green "Downloading Raspberry Pi OS Lite..."
-wget -O "$IMG_FILE_XZ" $RPI_OS_URL
+print_warn "ALL DATA on /dev/$drive will be erased!"
+echo -e "    ${DIM}${drive_info}${NC}"
+read -rp "  Are you sure? (yes/no): " confirm
+if [[ "${confirm,,}" != "yes" ]]; then
+    print_info "Cancelled."
+    exit 0
+fi
 
-# Uncompress the xz file (this might take a few minutes)
+# ── Download image ───────────────────────────────────────────────────────────
+print_header "Downloading Image (${IMAGE_VERSION})"
+print_info "Source: $RPI_OS_URL"
 echo ""
-echo_green "Uncompressing the image file... This may take a few minutes."
-xz -d "$IMG_FILE_XZ"
+wget --progress=bar:force:noscroll -O "$IMG_FILE_XZ" "$RPI_OS_URL" 2>&1
+print_success "Download complete."
 
-# Write the image to the selected drive (this may also take a few minutes)
+# ── Decompress ───────────────────────────────────────────────────────────────
+print_header "Decompressing Image"
+xz -d "$IMG_FILE_XZ" &
+spinner $! "Decompressing ${IMG_FILE_XZ}..."
+print_success "Decompression complete."
+
+# ── Write to SD card ────────────────────────────────────────────────────────
+print_header "Writing Image to /dev/$drive"
+print_info "This may take several minutes..."
 echo ""
-echo_green "Writing the image to /dev/$drive... This may take a few minutes."
-dd if="$IMG_FILE" of=/dev/$drive bs=4M status=progress conv=fsync
+dd if="$IMG_FILE" of="/dev/$drive" bs=4M status=progress conv=fsync 2>&1
+echo ""
+print_success "Image written successfully."
 
-# Check if the boot partition is mounted by verifying if cmdline.txt exists
+# ── Mount partitions ─────────────────────────────────────────────────────────
+print_header "Mounting Partitions"
+echo -e "  Unplug your USB adapter, then plug it back in."
+echo -e "  Mount ${BOLD}both${NC} drives by clicking the USB icons in the sidebar."
+
 while true; do
-    echo ""
-    echo_green "Next, we need to mount the drive. First, unplug your USB drive and plug it back in. After plugging it in, there should be two USB drive icons in the toolbar on the left. Click on both of them to mount both drives."
+    read -rp "  Press Enter once both drives are mounted..." _
 
-    read -p "Press enter once you have mounted both drives..." proceed
+    boot_ok=false
+    root_ok=false
 
-    if [ -f "$BOOT_PARTITION/cmdline.txt" ]; then
-        echo_green "Boot partition is mounted correctly. Proceeding..."
-        break
+    if [[ -f "$BOOT_PARTITION/cmdline.txt" ]]; then
+        boot_ok=true
+        print_success "Boot partition (bootfs) mounted."
     else
-        echo_red "Error: Boot partition is not mounted."
-        echo_red "Please make sure you have plugged in the device and mounted the boot partition correctly."
+        print_error "Boot partition not found at $BOOT_PARTITION"
     fi
 
-    if [ -f "$ROOT_PARTITION/etc/systemd/system/" ]; then
-        echo_green "Root partition is mounted correctly. Proceeding..."
-        break
+    if [[ -d "$ROOT_PARTITION/etc/systemd/system" ]]; then
+        root_ok=true
+        print_success "Root partition (rootfs) mounted."
     else
-        echo_red "Error: Root partition is not mounted."
-        echo_red "Please make sure you have plugged in the device and mounted the root partition correctly."
+        print_error "Root partition not found at $ROOT_PARTITION"
     fi
 
+    if $boot_ok && $root_ok; then
+        break
+    fi
+
+    print_warn "Please mount the missing partition(s) and try again."
 done
 
-# Write the firstrun.sh file dynamically with the user's username and hashed password
-echo ""
-echo_green "Writing the firstrun.sh file..."
+# ── Write firstrun.sh ───────────────────────────────────────────────────────
+print_header "Configuring First-Boot Setup"
 
-cat <<EOF | tee $BOOT_PARTITION/firstrun.sh >/dev/null
+cat > "$BOOT_PARTITION/firstrun.sh" <<FIRSTRUN_EOF
 #!/bin/bash
-
+# Auto-generated by ECEn 225 Imager — runs once on first boot
 set +e
 
+# ── Set hostname ──
 CURRENT_HOSTNAME=\$(cat /etc/hostname | tr -d " \t\n\r")
 if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
-    /usr/lib/raspberrypi-sys-mods/imager_custom set_hostname doorbell-$username
+    /usr/lib/raspberrypi-sys-mods/imager_custom set_hostname doorbell-${username}
 else
-    echo doorbell-$username >/etc/hostname
-    sed -i "s/127.0.1.1.*\$CURRENT_HOSTNAME/127.0.1.1\\tdoorbell-$username/g" /etc/hosts
+    echo "doorbell-${username}" > /etc/hostname
+    sed -i "s/127.0.1.1.*\$CURRENT_HOSTNAME/127.0.1.1\\tdoorbell-${username}/g" /etc/hosts
 fi
 
+# ── Configure user account ──
 FIRSTUSER=\$(getent passwd 1000 | cut -d: -f1)
-FIRSTUSERHOME=\$(getent passwd 1000 | cut -d: -f6)
-if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
-    /usr/lib/raspberrypi-sys-mods/imager_custom enable_ssh
-else
-    systemctl enable ssh
-fi
 
 if [ -f /usr/lib/userconf-pi/userconf ]; then
-    /usr/lib/userconf-pi/userconf "$username" '$hashed_password'
+    /usr/lib/userconf-pi/userconf "${username}" '${hashed_password}'
 else
-    echo "\$FIRSTUSER:"'$hashed_password' | chpasswd -e
-    if [ "\$FIRSTUSER" != "$username" ]; then
-        usermod -l "$username" "\$FIRSTUSER"
-        usermod -m -d "/home/$username" "$username"
-        groupmod -n "$username" "\$FIRSTUSER"
-        if grep -q "^autologin-user=" /etc/lightdm/lightdm.conf; then
-            sed /etc/lightdm/lightdm.conf -i -e "s/^autologin-user=.*/autologin-user=$username/"
+    echo "\$FIRSTUSER:'${hashed_password}'" | chpasswd -e
+    if [ "\$FIRSTUSER" != "${username}" ]; then
+        usermod -l "${username}" "\$FIRSTUSER"
+        usermod -m -d "/home/${username}" "${username}"
+        groupmod -n "${username}" "\$FIRSTUSER"
+        if grep -q "^autologin-user=" /etc/lightdm/lightdm.conf 2>/dev/null; then
+            sed /etc/lightdm/lightdm.conf -i -e "s/^autologin-user=.*/autologin-user=${username}/"
         fi
         if [ -f /etc/systemd/system/getty@tty1.service.d/autologin.conf ]; then
-            sed /etc/systemd/system/getty@tty1.service.d/autologin.conf -i -e "s/\$FIRSTUSER/$username/"
+            sed /etc/systemd/system/getty@tty1.service.d/autologin.conf -i -e "s/\$FIRSTUSER/${username}/"
         fi
         if [ -f /etc/sudoers.d/010_pi-nopasswd ]; then
-            sed -i "s/^\$FIRSTUSER /\$username /" /etc/sudoers.d/010_pi-nopasswd
+            sed -i "s/^\$FIRSTUSER /\${username} /" /etc/sudoers.d/010_pi-nopasswd
         fi
     fi
 fi
 
-if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
-    /usr/lib/raspberrypi-sys-mods/imager_custom set_keymap 'us'
-    /usr/lib/raspberrypi-sys-mods/imager_custom set_timezone 'America/Denver'
-else
-    rm -f /etc/localtime
-    echo "America/Denver" >/etc/timezone
-    dpkg-reconfigure -f noninteractive tzdata
-    cat >/etc/default/keyboard <<'KBEOF'
-XKBMODEL="pc105"
-XKBLAYOUT="us"
-XKBVARIANT=""
-XKBOPTIONS=""
-
-KBEOF
-    dpkg-reconfigure -f noninteractive keyboard-configuration
-fi
-
-sudo systemctl enable ip_addr.service
-
+# ── Cleanup first-run ──
 rm -f /boot/firstrun.sh
 sed -i 's| systemd.run.*||g' /boot/cmdline.txt
 exit 0
-EOF
+FIRSTRUN_EOF
 
-# Make the firstrun.sh file executable
-chmod +x $BOOT_PARTITION/firstrun.sh
+chmod +x "$BOOT_PARTITION/firstrun.sh"
+print_success "firstrun.sh written."
 
-# Edit cmdline.txt
-echo ""
-echo_green "Updating cmdline.txt to configure firstrun.sh..."
-sed -i '1 s/$/ systemd.run=\/boot\/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target/' $BOOT_PARTITION/cmdline.txt
+# ── Patch cmdline.txt ────────────────────────────────────────────────────────
+print_info "Updating cmdline.txt to trigger first-boot script..."
+sed -i '1 s|$| systemd.run=/boot/firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target|' \
+    "$BOOT_PARTITION/cmdline.txt"
+print_success "cmdline.txt updated."
 
-# Cleanup
-echo ""
-echo_green "Cleaning up..."
-rm -f "$IMG_FILE" "$IMG_FILE_XZ"
+# ── Done ─────────────────────────────────────────────────────────────────────
+rm -f "$IMG_FILE" "$IMG_FILE_XZ" 2>/dev/null || true
 
 echo ""
-echo_green "Raspberry Pi OS Lite (64-bit) has been written to /dev/$drive."
+echo -e "${BOLD}${GREEN}╔══════════════════════════════════════════════════════╗${NC}"
+echo -e "${BOLD}${GREEN}║                    All Done!                         ║${NC}"
+echo -e "${BOLD}${GREEN}╚══════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo_green "Eject the drive by right clicking on the USB drive icon and select \"Eject\"."
+echo -e "  ${BOLD}Summary${NC}"
+echo -e "  ───────────────────────────────────────"
+echo -e "  Image:     ECEn 225 ${IMAGE_VERSION}"
+echo -e "  Drive:     /dev/$drive"
+echo -e "  Hostname:  doorbell-${username}"
+echo -e "  Username:  ${username}"
+echo -e ""
+echo -e "  ${BOLD}Next steps:${NC}"
+echo -e "    1. Eject the drive (right-click → Eject)"
+echo -e "    2. Insert the SD card into your Raspberry Pi"
+echo -e "    3. Power on — first boot may take a couple of minutes"
+echo ""
