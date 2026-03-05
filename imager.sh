@@ -139,26 +139,6 @@ while true; do
 
 done
 
-# Download some extra stuff
-wget "https://raw.githubusercontent.com/Chaser2143/ecen224/fall_2023/assets/scripts/ip_addr.bin"
-chmod +x ip_addr.bin
-cp ip_addr.bin $BOOT_PARTITION/ip_addr.bin
-
-cat <<EOF >ip_addr.service
-[Unit]
-Description=IP Address Display
-
-[Service]
-ExecStart=/opt/ip_addr.bin
-
-[Install]
-WantedBy=multi-user.target
-EOF
-cp ip_addr.service $BOOT_PARTITION/ip_addr.service
-
-# In FirstRun mov /boot/firmware/ip_addr.service to /etc/systemd/system/ip_addr.service
-# In FirstRun mov /boot/firmware/ip_addr.bin to /opt/ip_addr.bin
-
 # Write the firstrun.sh file dynamically with the user's username and hashed password
 echo ""
 echo_green "Writing the firstrun.sh file..."
@@ -167,9 +147,6 @@ cat <<EOF | tee $BOOT_PARTITION/firstrun.sh >/dev/null
 #!/bin/bash
 
 set +e
-
-cp /boot/firmware/ip_addr.bin /opt/ip_addr.bin
-cp /boot/firmware/ip_addr.service /etc/systemd/system/ip_addr.service
 
 CURRENT_HOSTNAME=\$(cat /etc/hostname | tr -d " \t\n\r")
 if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
