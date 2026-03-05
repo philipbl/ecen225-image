@@ -55,7 +55,7 @@ trap cleanup EXIT
 # ── Banner ───────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${CYAN}║         ECEn 225 — Raspberry Pi SD Card Imager      ║${NC}"
+echo -e "${BOLD}${CYAN}║         ECEn 225 — Raspberry Pi SD Card Imager       ║${NC}"
 echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  This script will:"
