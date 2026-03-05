@@ -194,15 +194,14 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
 
 # Configure swapfile
 echo "Configuring swapfile..."
-chroot "$MOUNT_ROOT" /bin/bash -c '
-    if command -v dphys-swapfile &> /dev/null; then
-        dphys-swapfile swapoff || true
-        sed -i "s/CONF_SWAPSIZE=.*/CONF_SWAPSIZE=1024/g" /etc/dphys-swapfile
-        dphys-swapfile setup
-        dphys-swapfile swapon
-        echo "Swapfile configured to 1024MB"
-    fi
-'
+mkdir -p "$MOUNT_ROOT/etc/rpi/swap.conf.d"
+cat > "$MOUNT_ROOT/etc/rpi/swap.conf.d/80-use-swapfile.conf" << 'EOF'
+[Main]
+Mechanism=swapfile
+
+[File]
+FixedSizeMiB=1024
+EOF
 
 echo "Image modification complete"
 
