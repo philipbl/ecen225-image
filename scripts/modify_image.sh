@@ -153,6 +153,32 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
     apt-get autoclean
 '
 
+# Download and install ip_addr binary with systemd service
+echo "Installing ip_addr binary and systemd service..."
+curl -L -o "$MOUNT_ROOT/usr/local/bin/ip_addr" \
+    "https://github.com/byu-cpe/ecen224/raw/refs/heads/main/assets/scripts/ip_addr.bin"
+chmod 755 "$MOUNT_ROOT/usr/local/bin/ip_addr"
+
+cat > "$MOUNT_ROOT/etc/systemd/system/ip_addr.service" << 'EOF'
+[Unit]
+Description=Display IP Address
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ip_addr
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    systemctl enable ip_addr.service
+'
+
 # Configure swapfile
 echo "Configuring swapfile..."
 chroot "$MOUNT_ROOT" /bin/bash -c '

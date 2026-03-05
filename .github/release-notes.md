@@ -11,9 +11,8 @@ This is an automatically generated Raspberry Pi OS image with the following modi
   - DRM and media libraries (libdrm-dev, libexif-dev)
   - Utilities: tmux, vim, curl
 - Swapfile configured to 1024MB
-- Oh My Zsh installed for both root and ta user
-- Default shell changed to Zsh
 - Added system user `ta`
+- Installed `ip_addr` binary with systemd service
 
 ## How to Use
 1. Download the `ecen225-rpi-os.img.xz` file
