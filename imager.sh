@@ -234,36 +234,10 @@ cat > "$BOOT_PARTITION/firstrun.sh" <<FIRSTRUN_EOF
 set +e
 
 # ── Set hostname ──
-CURRENT_HOSTNAME=\$(cat /etc/hostname | tr -d " \t\n\r")
-if [ -f /usr/lib/raspberrypi-sys-mods/imager_custom ]; then
-    /usr/lib/raspberrypi-sys-mods/imager_custom set_hostname doorbell-${username}
-else
-    echo "doorbell-${username}" > /etc/hostname
-    sed -i "s/127.0.1.1.*\$CURRENT_HOSTNAME/127.0.1.1\\tdoorbell-${username}/g" /etc/hosts
-fi
+/usr/lib/raspberrypi-sys-mods/imager_custom set_hostname doorbell-${username}
 
 # ── Configure user account ──
-FIRSTUSER=\$(getent passwd 1000 | cut -d: -f1)
-
-if [ -f /usr/lib/userconf-pi/userconf ]; then
-    /usr/lib/userconf-pi/userconf "${username}" '${hashed_password}'
-else
-    echo "\$FIRSTUSER:'${hashed_password}'" | chpasswd -e
-    if [ "\$FIRSTUSER" != "${username}" ]; then
-        usermod -l "${username}" "\$FIRSTUSER"
-        usermod -m -d "/home/${username}" "${username}"
-        groupmod -n "${username}" "\$FIRSTUSER"
-        if grep -q "^autologin-user=" /etc/lightdm/lightdm.conf 2>/dev/null; then
-            sed /etc/lightdm/lightdm.conf -i -e "s/^autologin-user=.*/autologin-user=${username}/"
-        fi
-        if [ -f /etc/systemd/system/getty@tty1.service.d/autologin.conf ]; then
-            sed /etc/systemd/system/getty@tty1.service.d/autologin.conf -i -e "s/\$FIRSTUSER/${username}/"
-        fi
-        if [ -f /etc/sudoers.d/010_pi-nopasswd ]; then
-            sed -i "s/^\$FIRSTUSER /\${username} /" /etc/sudoers.d/010_pi-nopasswd
-        fi
-    fi
-fi
+/usr/lib/userconf-pi/userconf "${username}" '${hashed_password}'
 
 # ── Cleanup first-run ──
 rm -f /boot/firstrun.sh
