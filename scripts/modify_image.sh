@@ -179,19 +179,6 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
     systemctl enable ip_addr.service
 '
 
-# Enable SSH
-echo "Enabling SSH..."
-chroot "$MOUNT_ROOT" /bin/bash -c '
-    /usr/lib/raspberrypi-sys-mods/imager_custom enable_ssh
-'
-
-# Set timezone and keyboard layout
-echo "Configuring timezone and keyboard layout..."
-chroot "$MOUNT_ROOT" /bin/bash -c '
-    /usr/lib/raspberrypi-sys-mods/imager_custom set_keymap "us"
-    /usr/lib/raspberrypi-sys-mods/imager_custom set_timezone "America/Denver"
-'
-
 # Configure swapfile
 echo "Configuring swapfile..."
 mkdir -p "$MOUNT_ROOT/etc/rpi/swap.conf.d"
