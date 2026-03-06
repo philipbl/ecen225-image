@@ -58,11 +58,9 @@ echo -e "${BOLD}${CYAN}║         ECEn 225 — Raspberry Pi SD Card Imager     
 echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  This script will:"
-echo -e "    1. Download the ECEn 225 course image"
-echo -e "    2. Write it to your SD card"
-echo -e "    3. Configure your student user account"
-echo ""
-echo -e "  ${RED}${BOLD}⚠  Use a DIFFERENT password than your BYU/CAEDM account.${NC}"
+echo -e "    1. Configure your student user account"
+echo -e "    2. Download the ECEn 225 course image"
+echo -e "    3. Write it to your SD card"
 echo ""
 
 # ── Confirm ──────────────────────────────────────────────────────────────────
@@ -89,6 +87,11 @@ while true; do
 done
 
 # Password
+
+echo ""
+echo -e "  ${RED}${BOLD}⚠  Use a DIFFERENT password than your BYU/CAEDM account.${NC}"
+echo ""
+
 while true; do
     read -rsp "  Enter password: " password
     echo ""
@@ -115,23 +118,27 @@ if [[ -f "$IMG_FILE" ]] || [[ -f "$IMG_FILE_XZ" ]]; then
     rm -f "$IMG_FILE" "$IMG_FILE_XZ"
 fi
 
-# ── Plug in SD card ─────────────────────────────────────────────────────────
-print_header "SD Card Setup"
-echo -e "  Plug the SD card and USB adapter into your computer."
-read -rp "  Press Enter once the SD card is plugged in..." _
+# ── Plug in SD card & detect drive ───────────────────────────────────────────
+while true; do
+    print_header "SD Card Setup"
+    echo -e "  Plug the SD card and USB adapter into your computer."
+    read -rp "  Press Enter once the SD card is plugged in..." _
 
-# ── Detect SD card ──────────────────────────────────────────────────────────
-print_header "Drive Selection"
+    # ── Detect SD card ──────────────────────────────────────────────────────────
+    print_header "Drive Selection"
 
-# Only list removable USB drives (excludes internal SATA/NVMe)
-available_drives=$(lsblk -d -n -o NAME,SIZE,MODEL,TRAN,RM 2>/dev/null \
-    | awk '$4 == "usb" && $5 == "1" { print $1, $2, $3 }' || true)
+    # Only list removable USB drives (excludes internal SATA/NVMe)
+    available_drives=$(lsblk -d -n -o NAME,SIZE,MODEL,TRAN,RM 2>/dev/null \
+        | awk '$4 == "usb" && $5 == "1" { print $1, $2, $3 }' || true)
 
-if [[ -z "$available_drives" ]]; then
-    print_error "No removable USB drives detected."
-    print_info "Make sure your SD card and USB adapter are properly connected and try again."
-    exit 1
-fi
+    if [[ -z "$available_drives" ]]; then
+        print_error "No removable USB drives detected."
+        print_info "Make sure your SD card and USB adapter are properly connected."
+        continue
+    fi
+
+    break
+done
 
 echo ""
 echo -e "  ${BOLD}Available drives:${NC}"
