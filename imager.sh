@@ -73,11 +73,6 @@ if [[ "${proceed,,}" != "y" ]]; then
     exit 0
 fi
 
-# ── Plug in SD card ─────────────────────────────────────────────────────────
-print_header "SD Card Setup"
-echo -e "  Plug the SD card and USB adapter into your computer."
-read -rp "  Press Enter once the SD card is plugged in..." _
-
 # ── Credentials ──────────────────────────────────────────────────────────────
 print_header "User Account Setup"
 
@@ -119,6 +114,11 @@ if [[ -f "$IMG_FILE" ]] || [[ -f "$IMG_FILE_XZ" ]]; then
     print_warn "Removing leftover files from a previous run..."
     rm -f "$IMG_FILE" "$IMG_FILE_XZ"
 fi
+
+# ── Plug in SD card ─────────────────────────────────────────────────────────
+print_header "SD Card Setup"
+echo -e "  Plug the SD card and USB adapter into your computer."
+read -rp "  Press Enter once the SD card is plugged in..." _
 
 # ── Detect SD card ──────────────────────────────────────────────────────────
 print_header "Drive Selection"
