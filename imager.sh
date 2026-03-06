@@ -123,18 +123,13 @@ read -rp "  Press Enter once the SD card is plugged in..." _
 # ── Detect SD card ──────────────────────────────────────────────────────────
 print_header "Drive Selection"
 
-available_drives=$(lsblk -d -n -o NAME,SIZE,MODEL,TRAN 2>/dev/null \
-    | grep -E '(usb|sd)' \
-    | grep -vE '^(nvme|loop)' || true)
-
-# Fallback: just list sdX drives
-if [[ -z "$available_drives" ]]; then
-    available_drives=$(lsblk -d -n -o NAME,SIZE,MODEL | grep -E '^sd' || true)
-fi
+# Only list removable USB drives (excludes internal SATA/NVMe)
+available_drives=$(lsblk -d -n -o NAME,SIZE,MODEL,TRAN,RM 2>/dev/null \
+    | awk '$4 == "usb" && $5 == "1" { print $1, $2, $3 }' || true)
 
 if [[ -z "$available_drives" ]]; then
-    print_error "No removable drives detected."
-    print_info "Make sure your SD card is properly connected and try again."
+    print_error "No removable USB drives detected."
+    print_info "Make sure your SD card and USB adapter are properly connected and try again."
     exit 1
 fi
 
@@ -158,6 +153,25 @@ fi
 if [[ ! -b "/dev/$drive" ]]; then
     print_error "/dev/$drive does not exist as a block device."
     exit 1
+fi
+
+# Verify the selected drive is actually a removable USB device
+drive_tran=$(lsblk -d -n -o TRAN "/dev/$drive" 2>/dev/null | tr -d ' ')
+drive_rm=$(lsblk -d -n -o RM "/dev/$drive" 2>/dev/null | tr -d ' ')
+if [[ "$drive_tran" != "usb" ]] || [[ "$drive_rm" != "1" ]]; then
+    print_error "/dev/$drive is not a removable USB device. Refusing to write."
+    exit 1
+fi
+
+# Warn if drive seems too large (>128GB is unusual for an SD card)
+drive_bytes=$(lsblk -d -n -b -o SIZE "/dev/$drive" 2>/dev/null | tr -d ' ')
+if [[ -n "$drive_bytes" ]] && [[ "$drive_bytes" -gt 137438953472 ]]; then
+    print_warn "Drive /dev/$drive is larger than 128GB — this may not be an SD card."
+    read -rp "  Continue anyway? (yes/no): " size_confirm
+    if [[ "$size_confirm" != "yes" ]]; then
+        print_info "Cancelled."
+        exit 0
+    fi
 fi
 
 # Confirm destructive write
