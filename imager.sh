@@ -8,8 +8,8 @@
 set -euo pipefail
 
 # ── Variables ────────────────────────────────────────────────────────────────
-IMAGE_VERSION="v22"
-RPI_OS_URL="https://github.com/philipbl/ecen225-image/releases/download/${IMAGE_VERSION}/ecen225-rpi-os.img.xz"
+REPO="philipbl/ecen225-image"
+RPI_OS_URL="https://github.com/${REPO}/releases/latest/download/ecen225-rpi-os.img.xz"
 IMG_FILE="ecen225-rpi-os.img"
 IMG_FILE_XZ="${IMG_FILE}.xz"
 BOOT_PARTITION="/media/$(whoami)/bootfs"
@@ -44,6 +44,22 @@ spinner() {
     wait "$pid"
     return $?
 }
+
+# ── Drain queued keypresses from long-running ops ────────────────────────────
+flush_stdin() {
+    local _discard
+    while read -r -t 0.01 -n 1 _discard 2>/dev/null; do :; done
+}
+
+# ── Dependency check ────────────────────────────────────────────────────────
+missing=()
+for cmd in wget xz openssl lsblk dd awk grep tr; do
+    command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
+done
+if [[ ${#missing[@]} -gt 0 ]]; then
+    echo -e "  ${RED}✖${NC} Missing required tools: ${missing[*]}" >&2
+    exit 1
+fi
 
 # ── Cleanup on exit ─────────────────────────────────────────────────────────
 cleanup() {
@@ -128,8 +144,13 @@ while true; do
     print_header "Drive Selection"
 
     # Only list removable USB drives (excludes internal SATA/NVMe)
-    available_drives=$(lsblk -d -n -o NAME,SIZE,MODEL,TRAN,RM 2>/dev/null \
-        | awk '$4 == "usb" && $5 == "1" { print $1, $2, $3 }' || true)
+    # MODEL last since it may contain spaces.
+    available_drives=$(lsblk -d -n -o NAME,SIZE,TRAN,RM,MODEL 2>/dev/null \
+        | awk '$3 == "usb" && $4 == "1" {
+            model = "";
+            for (i = 5; i <= NF; i++) model = model (i > 5 ? " " : "") $i;
+            print $1, $2, model
+        }' || true)
 
     if [[ -z "$available_drives" ]]; then
         print_error "No removable USB drives detected."
@@ -149,18 +170,28 @@ done
 echo -e "  ${DIM}─────────────────────────────────────────────────${NC}"
 echo ""
 
-read -rp "  Enter the target drive (e.g., sda): " drive
+available_names=$(echo "$available_drives" | awk '{ print $1 }')
 
-# Validate drive
-if [[ ! "$drive" =~ ^sd[a-z]$ ]]; then
-    print_error "/dev/$drive is not a valid sdX device name."
-    exit 1
-fi
+while true; do
+    read -rp "  Enter the target drive (e.g., sda): " drive
 
-if [[ ! -b "/dev/$drive" ]]; then
-    print_error "/dev/$drive does not exist as a block device."
-    exit 1
-fi
+    if [[ ! "$drive" =~ ^sd[a-z]$ ]]; then
+        print_error "/dev/$drive is not a valid sdX device name."
+        continue
+    fi
+
+    if ! echo "$available_names" | grep -qx "$drive"; then
+        print_error "/dev/$drive is not in the list of available drives."
+        continue
+    fi
+
+    if [[ ! -b "/dev/$drive" ]]; then
+        print_error "/dev/$drive does not exist as a block device."
+        continue
+    fi
+
+    break
+done
 
 # Verify the selected drive is actually a removable USB device
 drive_tran=$(lsblk -d -n -o TRAN "/dev/$drive" 2>/dev/null | tr -d ' ')
@@ -193,7 +224,7 @@ if [[ "$(printf '%s' "$confirm" | tr '[:upper:]' '[:lower:]')" != "yes" ]]; then
 fi
 
 # ── Download image ───────────────────────────────────────────────────────────
-print_header "Downloading Image (${IMAGE_VERSION})"
+print_header "Downloading Image"
 print_info "Source: $RPI_OS_URL"
 echo ""
 wget --progress=bar:force:noscroll -O "$IMG_FILE_XZ" "$RPI_OS_URL" 2>&1
@@ -208,15 +239,16 @@ print_success "Decompression complete."
 # ── Write to SD card ────────────────────────────────────────────────────────
 print_header "Writing Image to /dev/$drive"
 print_info "This may take several minutes..."
-echo ""
-dd if="$IMG_FILE" of="/dev/$drive" bs=4M status=progress conv=fsync 2>&1
-echo ""
+dd if="$IMG_FILE" of="/dev/$drive" bs=4M conv=fsync >/dev/null 2>&1 &
+spinner $! "Writing image to /dev/$drive..."
 print_success "Image written successfully."
 
 # ── Mount partitions ─────────────────────────────────────────────────────────
 print_header "Mounting Boot Partition"
 echo -e "  Unplug your USB adapter, then plug it back in."
 echo -e "  Mount the ${BOLD}bootfs${NC} drive by clicking the USB icon in the sidebar."
+
+flush_stdin
 
 while true; do
     read -rp "  Press Enter once the boot drive is mounted..." _
@@ -271,7 +303,6 @@ echo -e "${BOLD}${GREEN}╚═════════════════�
 echo ""
 echo -e "  ${BOLD}Summary${NC}"
 echo -e "  ───────────────────────────────────────"
-echo -e "  Image:     ECEn 225 ${IMAGE_VERSION}"
 echo -e "  Drive:     /dev/$drive"
 echo -e "  Hostname:  doorbell-${username}"
 echo -e "  Username:  ${username}"
