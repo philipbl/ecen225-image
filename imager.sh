@@ -229,9 +229,8 @@ print_success "Decompression complete."
 # ── Write to SD card ────────────────────────────────────────────────────────
 print_header "Writing Image to /dev/$drive"
 print_info "This may take several minutes..."
-echo ""
-dd if="$IMG_FILE" of="/dev/$drive" bs=4M status=progress conv=fsync 2>&1
-echo ""
+dd if="$IMG_FILE" of="/dev/$drive" bs=4M conv=fsync >/dev/null 2>&1 &
+spinner $! "Writing image to /dev/$drive..."
 print_success "Image written successfully."
 
 # ── Mount partitions ─────────────────────────────────────────────────────────
