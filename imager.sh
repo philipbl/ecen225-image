@@ -51,6 +51,16 @@ flush_stdin() {
     while read -r -t 0.01 -n 1 _discard 2>/dev/null; do :; done
 }
 
+# ── Dependency check ────────────────────────────────────────────────────────
+missing=()
+for cmd in wget xz openssl lsblk dd awk grep tr; do
+    command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
+done
+if [[ ${#missing[@]} -gt 0 ]]; then
+    echo -e "  ${RED}✖${NC} Missing required tools: ${missing[*]}" >&2
+    exit 1
+fi
+
 # ── Cleanup on exit ─────────────────────────────────────────────────────────
 cleanup() {
     rm -f "$IMG_FILE" "$IMG_FILE_XZ" 2>/dev/null || true
