@@ -8,8 +8,8 @@
 set -euo pipefail
 
 # ── Variables ────────────────────────────────────────────────────────────────
-IMAGE_VERSION="v22"
-RPI_OS_URL="https://github.com/philipbl/ecen225-image/releases/download/${IMAGE_VERSION}/ecen225-rpi-os.img.xz"
+REPO="philipbl/ecen225-image"
+RPI_OS_URL="https://github.com/${REPO}/releases/latest/download/ecen225-rpi-os.img.xz"
 IMG_FILE="ecen225-rpi-os.img"
 IMG_FILE_XZ="${IMG_FILE}.xz"
 BOOT_PARTITION="/media/$(whoami)/bootfs"
@@ -214,7 +214,7 @@ if [[ "$(printf '%s' "$confirm" | tr '[:upper:]' '[:lower:]')" != "yes" ]]; then
 fi
 
 # ── Download image ───────────────────────────────────────────────────────────
-print_header "Downloading Image (${IMAGE_VERSION})"
+print_header "Downloading Image"
 print_info "Source: $RPI_OS_URL"
 echo ""
 wget --progress=bar:force:noscroll -O "$IMG_FILE_XZ" "$RPI_OS_URL" 2>&1
@@ -293,7 +293,6 @@ echo -e "${BOLD}${GREEN}╚═════════════════�
 echo ""
 echo -e "  ${BOLD}Summary${NC}"
 echo -e "  ───────────────────────────────────────"
-echo -e "  Image:     ECEn 225 ${IMAGE_VERSION}"
 echo -e "  Drive:     /dev/$drive"
 echo -e "  Hostname:  doorbell-${username}"
 echo -e "  Username:  ${username}"
