@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # ── Variables ────────────────────────────────────────────────────────────────
-IMAGE_VERSION="v10"
+IMAGE_VERSION="v22"
 RPI_OS_URL="https://github.com/philipbl/ecen225-image/releases/download/${IMAGE_VERSION}/ecen225-rpi-os.img.xz"
 IMG_FILE="ecen225-rpi-os.img"
 IMG_FILE_XZ="${IMG_FILE}.xz"
@@ -64,8 +64,8 @@ echo -e "    3. Write it to your SD card"
 echo ""
 
 # ── Confirm ──────────────────────────────────────────────────────────────────
-read -rp "  Would you like to proceed? (y/n): " proceed
-if [[ "${proceed,,}" != "y" ]]; then
+read -rp "  Would you like to proceed? (y/N): " proceed
+if [[ "$(printf '%s' "$proceed" | tr '[:upper:]' '[:lower:]')" != "y" ]]; then
     echo ""
     print_info "Cancelled."
     exit 0
@@ -187,7 +187,7 @@ echo ""
 print_warn "ALL DATA on /dev/$drive will be erased!"
 echo -e "    ${DIM}${drive_info}${NC}"
 read -rp "  Are you sure? (yes/no): " confirm
-if [[ "${confirm,,}" != "yes" ]]; then
+if [[ "$(printf '%s' "$confirm" | tr '[:upper:]' '[:lower:]')" != "yes" ]]; then
     print_info "Cancelled."
     exit 0
 fi
