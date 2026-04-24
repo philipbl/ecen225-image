@@ -148,7 +148,8 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
         libexif-dev \
         tmux \
         vim \
-        curl
+        curl \
+        emacs
     apt-get clean
     apt-get autoclean
 '
