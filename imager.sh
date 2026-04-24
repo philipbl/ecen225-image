@@ -128,8 +128,13 @@ while true; do
     print_header "Drive Selection"
 
     # Only list removable USB drives (excludes internal SATA/NVMe)
-    available_drives=$(lsblk -d -n -o NAME,SIZE,MODEL,TRAN,RM 2>/dev/null \
-        | awk '$4 == "usb" && $5 == "1" { print $1, $2, $3 }' || true)
+    # MODEL last since it may contain spaces.
+    available_drives=$(lsblk -d -n -o NAME,SIZE,TRAN,RM,MODEL 2>/dev/null \
+        | awk '$3 == "usb" && $4 == "1" {
+            model = "";
+            for (i = 5; i <= NF; i++) model = model (i > 5 ? " " : "") $i;
+            print $1, $2, model
+        }' || true)
 
     if [[ -z "$available_drives" ]]; then
         print_error "No removable USB drives detected."
