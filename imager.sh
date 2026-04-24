@@ -45,6 +45,12 @@ spinner() {
     return $?
 }
 
+# ── Drain queued keypresses from long-running ops ────────────────────────────
+flush_stdin() {
+    local _discard
+    while read -r -t 0.01 -n 1 _discard 2>/dev/null; do :; done
+}
+
 # ── Cleanup on exit ─────────────────────────────────────────────────────────
 cleanup() {
     rm -f "$IMG_FILE" "$IMG_FILE_XZ" 2>/dev/null || true
@@ -232,6 +238,8 @@ print_success "Image written successfully."
 print_header "Mounting Boot Partition"
 echo -e "  Unplug your USB adapter, then plug it back in."
 echo -e "  Mount the ${BOLD}bootfs${NC} drive by clicking the USB icon in the sidebar."
+
+flush_stdin
 
 while true; do
     read -rp "  Press Enter once the boot drive is mounted..." _
