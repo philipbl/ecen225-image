@@ -148,22 +148,48 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
         libexif-dev \
         tmux \
         vim \
-        curl
+        curl \
+        emacs
     apt-get clean
     apt-get autoclean
 '
 
+# Download and install ip_addr binary with systemd service
+echo "Installing ip_addr binary and systemd service..."
+curl -L -o "$MOUNT_ROOT/usr/local/bin/ip_addr" \
+    "https://github.com/byu-cpe/ecen224/raw/refs/heads/main/assets/scripts/ip_addr.bin"
+chmod 755 "$MOUNT_ROOT/usr/local/bin/ip_addr"
+
+cat > "$MOUNT_ROOT/etc/systemd/system/ip_addr.service" << 'EOF'
+[Unit]
+Description=Display IP Address
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ip_addr
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+chroot "$MOUNT_ROOT" /bin/bash -c '
+    systemctl enable ip_addr.service
+'
+
 # Configure swapfile
 echo "Configuring swapfile..."
-chroot "$MOUNT_ROOT" /bin/bash -c '
-    if command -v dphys-swapfile &> /dev/null; then
-        dphys-swapfile swapoff || true
-        sed -i "s/CONF_SWAPSIZE=.*/CONF_SWAPSIZE=1024/g" /etc/dphys-swapfile
-        dphys-swapfile setup
-        dphys-swapfile swapon
-        echo "Swapfile configured to 1024MB"
-    fi
-'
+mkdir -p "$MOUNT_ROOT/etc/rpi/swap.conf.d"
+cat > "$MOUNT_ROOT/etc/rpi/swap.conf.d/80-use-swapfile.conf" << 'EOF'
+[Main]
+Mechanism=swapfile
+
+[File]
+FixedSizeMiB=1024
+EOF
 
 echo "Image modification complete"
 

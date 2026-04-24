@@ -17,6 +17,12 @@ This build applies the following modifications to Raspberry Pi OS:
 - Full system upgrade (apt upgrade)
 - Swapfile configured to 1024MB
 
+### System Configuration (baked into image)
+- **SSH**: Enabled by default
+- **Timezone**: America/Denver
+- **Keyboard layout**: US (pc105)
+- **IP Address Display**: `ip_addr` systemd service installed and enabled (runs on boot)
+
 ### Development Tools & Libraries
 Installs essential tools for embedded systems and image processing:
 - **Version Control**: Git
@@ -31,6 +37,12 @@ Installs essential tools for embedded systems and image processing:
 - Added system user `ta` with a secure password (set via environment variable)
 - Grants sudo access to the `ta` user
 - Oh My Zsh installed for both root and ta user
+
+### Student Imager (`imager.sh`)
+The student-facing imager script handles only per-student customization:
+- Sets hostname to `doorbell-<NetID>`
+- Creates / renames the default user to the student's NetID
+- Sets the student's chosen password
 
 ## Prerequisites
 
