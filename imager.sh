@@ -154,18 +154,28 @@ done
 echo -e "  ${DIM}─────────────────────────────────────────────────${NC}"
 echo ""
 
-read -rp "  Enter the target drive (e.g., sda): " drive
+available_names=$(echo "$available_drives" | awk '{ print $1 }')
 
-# Validate drive
-if [[ ! "$drive" =~ ^sd[a-z]$ ]]; then
-    print_error "/dev/$drive is not a valid sdX device name."
-    exit 1
-fi
+while true; do
+    read -rp "  Enter the target drive (e.g., sda): " drive
 
-if [[ ! -b "/dev/$drive" ]]; then
-    print_error "/dev/$drive does not exist as a block device."
-    exit 1
-fi
+    if [[ ! "$drive" =~ ^sd[a-z]$ ]]; then
+        print_error "/dev/$drive is not a valid sdX device name."
+        continue
+    fi
+
+    if ! echo "$available_names" | grep -qx "$drive"; then
+        print_error "/dev/$drive is not in the list of available drives."
+        continue
+    fi
+
+    if [[ ! -b "/dev/$drive" ]]; then
+        print_error "/dev/$drive does not exist as a block device."
+        continue
+    fi
+
+    break
+done
 
 # Verify the selected drive is actually a removable USB device
 drive_tran=$(lsblk -d -n -o TRAN "/dev/$drive" 2>/dev/null | tr -d ' ')
