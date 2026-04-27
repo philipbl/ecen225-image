@@ -157,11 +157,18 @@ chroot "$MOUNT_ROOT" /bin/bash -c '
 # Install oh-my-zsh into /etc/skel so every new user gets it copied into
 # their home directory (no network needed on first boot).
 echo "Installing oh-my-zsh into /etc/skel..."
-chroot "$MOUNT_ROOT" /bin/bash -c '
+chroot "$MOUNT_ROOT" /bin/bash -e -c '
+    rm -rf /etc/skel/.oh-my-zsh
     git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git /etc/skel/.oh-my-zsh
     cp /etc/skel/.oh-my-zsh/templates/zshrc.zsh-template /etc/skel/.zshrc
     sed -i "s|^export ZSH=.*|export ZSH=\"\$HOME/.oh-my-zsh\"|" /etc/skel/.zshrc
 '
+
+# Sanity check: skel must contain .zshrc and .oh-my-zsh
+if [ ! -f "$MOUNT_ROOT/etc/skel/.zshrc" ] || [ ! -d "$MOUNT_ROOT/etc/skel/.oh-my-zsh" ]; then
+    echo "ERROR: oh-my-zsh skel install failed (.zshrc or .oh-my-zsh missing)"
+    exit 1
+fi
 
 # Download and install ip_addr binary with systemd service
 echo "Installing ip_addr binary and systemd service..."
