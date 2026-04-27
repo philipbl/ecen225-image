@@ -51,6 +51,29 @@ flush_stdin() {
     while read -r -t 0.01 -n 1 _discard 2>/dev/null; do :; done
 }
 
+# ── Read password, echo '*' per char ─────────────────────────────────────────
+read_password() {
+    local prompt="$1"
+    local __varname="$2"
+    local pw="" char
+    printf "%s" "$prompt"
+    while IFS= read -r -s -n 1 char; do
+        if [[ -z "$char" ]]; then
+            break
+        elif [[ "$char" == $'\x7f' || "$char" == $'\b' ]]; then
+            if [[ -n "$pw" ]]; then
+                pw="${pw%?}"
+                printf "\b \b"
+            fi
+        else
+            pw+="$char"
+            printf "*"
+        fi
+    done
+    printf "\n"
+    printf -v "$__varname" "%s" "$pw"
+}
+
 # ── Dependency check ────────────────────────────────────────────────────────
 missing=()
 for cmd in wget xz openssl lsblk dd awk grep tr; do
@@ -109,14 +132,12 @@ echo -e "  ${RED}${BOLD}⚠  Use a DIFFERENT password than your BYU/CAEDM accoun
 echo ""
 
 while true; do
-    read -rsp "  Enter password: " password
-    echo ""
+    read_password "  Enter password: " password
     if [[ ${#password} -lt 4 ]]; then
         print_error "Password must be at least 4 characters."
         continue
     fi
-    read -rsp "  Confirm password: " password_confirm
-    echo ""
+    read_password "  Confirm password: " password_confirm
     if [[ "$password" == "$password_confirm" ]]; then
         print_success "Credentials accepted."
         break
@@ -289,6 +310,10 @@ ssh_pwauth: true
 
 # Additional Raspberry Pi OS option (not available on generic cloud-init images)
 enable_ssh: true  # Enables the SSH server on first boot
+
+runcmd:
+  - cp -an /etc/skel/. /home/${username}/
+  - chown -R ${username}:${username} /home/${username}
 USERDATA_EOF
 
 print_success "user-data written."
